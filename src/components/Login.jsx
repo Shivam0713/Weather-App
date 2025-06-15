@@ -1,26 +1,43 @@
 import React, { useState } from 'react';
 import './Login.css';
+import Signup from './Signup';
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showSignup, setShowSignup] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleLoginSubmit = (e) => {
     e.preventDefault();
-    // Simple validation - in real app, this would connect to an auth service
-    if (username && password) {
-      onLogin();
-    } else {
+    if (!username || !password) {
       setError('Please enter both username and password');
+      return;
     }
+
+    // Check credentials against localStorage
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    const user = users.find(user => user.username === username && user.password === password);
+    if (!user) {
+      setError('Invalid username or password');
+      return;
+    }
+
+    // Successful login
+    localStorage.setItem('currentUser', username);
+    localStorage.setItem('isLoggedIn', 'true');
+    onLogin(user);
   };
+
+  if (showSignup) {
+    return <Signup onSignup={onLogin} onSwitchToLogin={() => setShowSignup(false)} />;
+  }
 
   return (
     <div className="login-modal">
       <div className="login-content">
         <h2>Welcome to Weather App</h2>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleLoginSubmit}>
           <div className="form-group">
             <input
               type="text"
@@ -38,7 +55,10 @@ const Login = ({ onLogin }) => {
             />
           </div>
           {error && <p className="error">{error}</p>}
-          <button type="submit">Login</button>
+          <div className="button-group">
+            <button type="submit">Login</button>
+            <button type="button" onClick={() => setShowSignup(true)}>Sign Up</button>
+          </div>
         </form>
       </div>
     </div>
