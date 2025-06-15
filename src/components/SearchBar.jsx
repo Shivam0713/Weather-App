@@ -1,33 +1,50 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import search_icon from '../assets/search.png';
 
 const SearchBar = ({ onSearch, history }) => {
-  const inputRef = useRef();
-  const [isFocused, setIsFocused] = useState(false);
+  const [city, setCity] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+
+  const handleSearch = () => {
+    if (city.trim()) {
+      onSearch(city);
+      setCity('');
+      setShowHistory(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const handleHistoryClick = (city) => {
+    setCity(city);
+    onSearch(city);
+    setShowHistory(false);
+  };
 
   return (
     <div className="search-container">
       <div className="search-bar">
         <input
-          ref={inputRef}
           type="text"
-          placeholder="Search"
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setTimeout(() => setIsFocused(false), 150)}
-          onKeyDown={(e) => e.key === "Enter" && onSearch(inputRef.current.value)}
+          placeholder="Search city..."
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          onKeyPress={handleKeyPress}
+          onFocus={() => setShowHistory(true)}
+          onBlur={() => setTimeout(() => setShowHistory(false), 200)}
         />
-        <img
-          src={search_icon}
-          alt="Search"
-          onClick={() => onSearch(inputRef.current.value)}
-        />
+        <img src={search_icon} alt="Search" onClick={handleSearch} />
       </div>
-      {isFocused && history.length > 0 && (
+      {showHistory && history.length > 0 && (
         <div className="history">
           <div className="history-list">
-            {history.map((city, idx) => (
-              <button key={idx} onMouseDown={() => onSearch(city)}>
-                {city}
+            {history.map((item, index) => (
+              <button key={index} onClick={() => handleHistoryClick(item)}>
+                {item}
               </button>
             ))}
           </div>
