@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import moment from 'moment';
 import './Weather.css';
 import Login from './Login.jsx';
 import SearchBar from './SearchBar.jsx';
 import WeatherDisplay from './WeatherDisplay.jsx';
+import Loader from './loader.jsx';
 
 // Icons
 import cloud_icon from '../assets/cloud.png';
@@ -21,11 +23,17 @@ const Weather = () => {
   const [weatherData, setWeatherData] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isDay, setIsDay] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+    return loggedIn;
+  });
+  const [currentUser, setCurrentUser] = useState(localStorage.getItem("currentUser") || "");
   const [history, setHistory] = useState(() => {
     const saved = localStorage.getItem("weather_history");
     return saved ? JSON.parse(saved) : [];
   });
+  const [forecast, setForecast] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const iconMap = {
     "01d": clear_icon,
@@ -57,46 +65,49 @@ const Weather = () => {
     return clear_bg;
   };
 
+  const fetchMockForecast = async () => {
+    const dailyForecast = Array.from({ length: 7 }, (_, i) => ({
+      day: moment().add(i + 1, 'days').format('dddd'),
+      temp: Math.round(25 + i),
+      humidity: 60 + i * 5,
+      windSpeed: 5 + i * 0.5,
+      description: i % 2 === 0 ? "clear sky" : "scattered clouds",
+      icon: i % 2 === 0 ? clear_icon : cloud_icon,
+    }));
+    setForecast(dailyForecast);
+  };
+
   const search = async (city) => {
     if (!city) {
       alert("Enter city name");
       return;
     }
     try {
-      const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${import.meta.env.VITE_APP_ID}`;
+      const mockWeatherData = {
+        iconCode: "01d",
+        icon: clear_icon,
+        main: "Clear",
+        humidity: 65,
+        windSpeed: 5.5,
+        temperature: 28,
+        location: city,
+      };
+      setWeatherData(mockWeatherData);
 
-      const response = await fetch(url);
-      const data = await response.json();
-      if (!response.ok) {
-        alert(data.message || "City not found");
-        return;
-      }
-      const weather = data.weather[0];
-      const iconCode = weather.icon;
-      const main = weather.main;
-      const icon = iconMap[iconCode] || clear_icon;
-      const currentTime = data.dt;
-      const sunrise = data.sys.sunrise;
-      const sunset = data.sys.sunset;
-      const isDayTime = currentTime >= sunrise && currentTime < sunset;
-      setIsDay(isDayTime);
-      setWeatherData({
-        iconCode,
-        icon,
-        main,
-        humidity: data.main.humidity,
-        windSpeed: data.wind.speed,
-        temperature: Math.round(data.main.temp),
-        location: data.name,
-      });
+      setLoading(true);
+      await fetchMockForecast();
+      setLoading(false);
+
       setHistory((prev) => {
         const updated = [city, ...prev.filter(c => c.toLowerCase() !== city.toLowerCase())].slice(0, 5);
         localStorage.setItem("weather_history", JSON.stringify(updated));
         return updated;
       });
     } catch (error) {
-      console.error("Failed to fetch weather:", error);
+      console.error("Failed to set mock data:", error);
       setWeatherData(null);
+      setForecast([]);
+      setLoading(false);
     }
   };
 
@@ -112,6 +123,10 @@ const Weather = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("isLoggedIn", isLoggedIn.toString());
+  }, [isLoggedIn]);
 
   const formatDate = (date) => {
     return date.toLocaleDateString(undefined, {
@@ -129,6 +144,20 @@ const Weather = () => {
     });
   };
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setWeatherData(null);
+    setForecast([]);
+    setCurrentUser("");
+    localStorage.removeItem("currentUser");
+    localStorage.setItem("isLoggedIn", "false");
+  };
+
+  const handleLogin = (user) => {
+    setIsLoggedIn(true);
+    setCurrentUser(user.username);
+  };
+
   const backgroundImage = getBackground(weatherData?.main, isDay);
 
   return (
@@ -139,24 +168,62 @@ const Weather = () => {
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         minHeight: '100vh',
-        padding: '20px',
+        padding: '0px',
         boxSizing: 'border-box',
         transition: 'background-image 0.5s ease-in-out',
       }}
     >
       {!isLoggedIn ? (
-        <Login onLogin={() => setIsLoggedIn(true)} />
+        <Login onLogin={handleLogin} />
       ) : (
-        <div className="weather">
-          <SearchBar onSearch={search} history={history} />
-          {weatherData && (
-            <WeatherDisplay
-              weatherData={weatherData}
-              currentTime={currentTime}
-              formatDate={formatDate}
-              formatTime={formatTime}
-            />
-          )}
+        <div className="app-container">
+          {loading && <Loader />}
+          
+          <div className="forecast-box">
+            <h3>Next 7 Days Forecast</h3>
+            {forecast.length > 0 ? (
+              forecast.map((day, i) => (
+                <div className="forecast-item" key={i}>
+                  <div className="forecast-main">
+                    <div className="forecast-day">{day.day}</div>
+                    <img src={day.icon} alt={day.description} className="forecast-icon" />
+                    <div className="forecast-temp">{day.temp}°C</div>
+                  </div>
+                  <div className="forecast-details">
+                    <div className="forecast-description">{day.description}</div>
+                    <div className="forecast-stats">
+                      <span>💧 {day.humidity}%</span>
+                      <span>🌬️ {day.windSpeed} m/s</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="no-forecast">No forecast data available</div>
+            )}
+          </div>
+
+          <div className="weather">
+            <div className="weather-header">
+              <SearchBar onSearch={search} history={history} />
+              <button className="logout-button" onClick={handleLogout}>Logout</button>
+            </div>
+            <div className="welcome-message">
+              Welcome, {currentUser}!
+            </div>
+            {weatherData ? (
+              <WeatherDisplay
+                weatherData={weatherData}
+                currentTime={currentTime}
+                formatDate={formatDate}
+                formatTime={formatTime}
+              />
+            ) : (
+              <div style={{ color: 'white', textAlign: 'center', marginTop: '20px' }}>
+                <p>Loading weather data...</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
