@@ -65,38 +65,75 @@ const Weather = () => {
     return clear_bg;
   };
 
-  const fetchMockForecast = async () => {
-    const dailyForecast = Array.from({ length: 7 }, (_, i) => ({
-      day: moment().add(i + 1, 'days').format('dddd'),
-      temp: Math.round(25 + i),
-      humidity: 60 + i * 5,
-      windSpeed: 5 + i * 0.5,
-      description: i % 2 === 0 ? "clear sky" : "scattered clouds",
-      icon: i % 2 === 0 ? clear_icon : cloud_icon,
-    }));
-    setForecast(dailyForecast);
-  };
-
   const search = async (city) => {
     if (!city) {
       alert("Enter city name");
       return;
     }
-    try {
-      const mockWeatherData = {
-        iconCode: "01d",
-        icon: clear_icon,
-        main: "Clear",
-        humidity: 65,
-        windSpeed: 5.5,
-        temperature: 28,
-        location: city,
-      };
-      setWeatherData(mockWeatherData);
 
-      setLoading(true);
-      await fetchMockForecast();
-      setLoading(false);
+    setLoading(true);
+    try {
+      const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${import.meta.env.VITE_APP_ID}`;
+      const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${import.meta.env.VITE_APP_ID}`;
+
+      const [weatherRes, forecastRes] = await Promise.all([
+        fetch(weatherUrl),
+        fetch(forecastUrl)
+      ]);
+
+      const weatherData = await weatherRes.json();
+      const forecastData = await forecastRes.json();
+
+      if (!weatherRes.ok || !forecastRes.ok) {
+        throw new Error(weatherData.message || forecastData.message || "City not found");
+      }
+
+      const weather = weatherData.weather[0];
+      const iconCode = weather.icon;
+      const isNight = iconCode.includes('n');
+      const icon = iconMap[iconCode] || clear_icon;
+
+      setWeatherData({
+        iconCode,
+        icon,
+        main: weather.main,
+        isNight,
+        humidity: weatherData.main.humidity,
+        windSpeed: weatherData.wind.speed,
+        temperature: Math.round(weatherData.main.temp),
+        location: weatherData.name,
+      });
+
+      setIsDay(!isNight);
+
+      const filteredForecast = forecastData.list
+        .filter(item => item.dt_txt.includes("12:00:00"))
+        .slice(0, 7);
+
+      const dailyForecast = filteredForecast.map(day => ({
+        day: new Date(day.dt_txt).toLocaleDateString(undefined, { weekday: 'long' }),
+        temp: Math.round(day.main.temp),
+        humidity: day.main.humidity,
+        windSpeed: day.wind.speed,
+        description: day.weather[0].description,
+        icon: iconMap[day.weather[0].icon] || clear_icon,
+      }));
+
+      // If the API provides fewer than 7 days, pad with placeholder data
+      while (dailyForecast.length < 7) {
+        const lastDay = dailyForecast[dailyForecast.length - 1];
+        const nextDayIndex = dailyForecast.length + 1;
+        dailyForecast.push({
+          day: moment().add(nextDayIndex, 'days').format('dddd'),
+          temp: lastDay.temp,
+          humidity: lastDay.humidity,
+          windSpeed: lastDay.windSpeed,
+          description: "Data unavailable",
+          icon: lastDay.icon,
+        });
+      }
+
+      setForecast(dailyForecast);
 
       setHistory((prev) => {
         const updated = [city, ...prev.filter(c => c.toLowerCase() !== city.toLowerCase())].slice(0, 5);
@@ -104,9 +141,11 @@ const Weather = () => {
         return updated;
       });
     } catch (error) {
-      console.error("Failed to set mock data:", error);
+      console.error("Failed to fetch weather:", error);
+      alert(`Failed to fetch weather data: ${error.message}`);
       setWeatherData(null);
       setForecast([]);
+    } finally {
       setLoading(false);
     }
   };
