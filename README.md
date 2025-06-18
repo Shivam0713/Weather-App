@@ -60,6 +60,6 @@ The app displays different background or weather icon images according to the fe
 
 ```bash
 git clone https://github.com/yourusername/react-weather-app.git
-cd react-weather-app
+cd Weather-App
 npm install
 npm run dev
