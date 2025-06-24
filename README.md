@@ -6,11 +6,16 @@ A beautiful and responsive weather application built using **React.js** and **CS
 
 ## 🔍 Features
 
-- ✅ Live weather data using OpenWeatherMap API (or any preferred weather API)
-- 🌡️ Current temperature with Celsius/Fahrenheit toggle
-- 💨 Wind speed and direction
-- 🌧️ Dynamic weather icons/images based on current condition (sunny, rainy, cloudy, etc.)
-- 📍 Search weather by city name
+- ✅ Live weather data using OpenWeatherMap API
+- 🌡️ Current temperature with dynamic display
+- 💨 Wind speed and humidity information
+- 🌥️ Dynamic weather icons based on current condition (e.g., sunny, cloudy)
+- 📍 Search weather by city name with search history
+- 📅 7-day weather forecast
+- ⏳ Hourly forecast for the next 24 hours
+- 🌙 Day/Night theme toggle for enhanced usability
+- 🎨 Glassmorphism design with gradient backgrounds
+- 🚨 Weather alerts for significant conditions
 - 📱 Fully responsive UI for mobile, tablet, and desktop
 
 ---
