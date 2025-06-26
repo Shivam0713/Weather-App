@@ -269,4 +269,8 @@ const Weather = () => {
   );
 };
 
+<<<<<<< HEAD
 export default Weather;
+=======
+export default Weather;
+>>>>>>> 18a35c49671e9f55cee5f03baf79e4c2fe0f59fa
