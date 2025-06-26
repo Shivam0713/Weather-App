@@ -97,7 +97,7 @@ cd Weather-App
 npm install
 npm run dev
 
----
+```
 
 🌟 What’s Next?
 
